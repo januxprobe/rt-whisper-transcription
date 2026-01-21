@@ -54,6 +54,7 @@ rt-whisper
 | `--model <name>` | `large-v3` | WhisperKit model variant |
 | `--language <code>` | `en` | Language code for transcription |
 | `--clipboard` | `false` | Copy each transcription to clipboard |
+| `--type` | `false` | Type transcription into the currently active app |
 | `--chunk-duration <secs>` | `2.0` | Audio chunk duration in seconds |
 
 ### Available Models
@@ -82,6 +83,12 @@ rt-whisper --raw
 # Copy transcriptions to clipboard for pasting
 rt-whisper --clipboard
 
+# Type directly into the focused application (Cursor, TextEdit, VS Code, etc.)
+rt-whisper --type
+
+# Combine type with other options
+rt-whisper --type --model small.en --language en
+
 # Shorter chunks for faster feedback (may reduce accuracy)
 rt-whisper --chunk-duration 1.5
 ```
@@ -91,6 +98,15 @@ rt-whisper --chunk-duration 1.5
 On first run, the selected model will be downloaded from Hugging Face (~150MB for large-v3). Subsequent runs use the cached model.
 
 You will also be prompted to grant microphone access in System Settings > Privacy & Security > Microphone.
+
+### Accessibility Permission (for --type flag)
+
+When using the `--type` flag to type transcriptions into the active app, you must grant accessibility permission:
+
+1. Run `rt-whisper --type` for the first time
+2. System Settings will open automatically to Privacy & Security > Accessibility
+3. Enable access for your terminal app (Terminal, iTerm, etc.)
+4. You may need to restart the terminal or re-run the command after granting permission
 
 ## Project Structure
 
@@ -106,13 +122,16 @@ rt-whisper-transcription/
 │       │   └── AudioCaptureManager.swift
 │       ├── Transcription/
 │       │   └── TranscriptionEngine.swift
-│       └── TextProcessing/
-│           ├── TextCleanupPipeline.swift
-│           ├── FillerWordRemover.swift
-│           └── RepetitionRemover.swift
+│       ├── TextProcessing/
+│       │   ├── TextCleanupPipeline.swift
+│       │   ├── FillerWordRemover.swift
+│       │   └── RepetitionRemover.swift
+│       └── TextInjection/
+│           └── TextInjector.swift
 └── Tests/
     └── RTWhisperTests/
-        └── TextCleanupTests.swift
+        ├── TextCleanupTests.swift
+        └── TextInjectorTests.swift
 ```
 
 ## How It Works

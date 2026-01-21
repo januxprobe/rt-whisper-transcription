@@ -22,6 +22,9 @@ struct RTWhisperCLI: AsyncParsableCommand {
     @Flag(name: .long, help: "Copy each transcription to clipboard")
     var clipboard: Bool = false
 
+    @Flag(name: .long, help: "Type transcription into the currently active app")
+    var type: Bool = false
+
     @Option(name: .long, help: "Audio chunk duration in seconds")
     var chunkDuration: Double = 2.0
 
@@ -53,6 +56,24 @@ struct RTWhisperCLI: AsyncParsableCommand {
             throw ExitCode.failure
         }
 
+        // Check accessibility permission if --type is used
+        var injector: TextInjector?
+        if type {
+            if !TextInjector.hasAccessibilityPermission() {
+                print("Requesting accessibility permission...")
+                TextInjector.requestAccessibilityPermission()
+                // Give user time to grant permission
+                try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+                if !TextInjector.hasAccessibilityPermission() {
+                    print("\u{001B}[31mError: Accessibility permission denied\u{001B}[0m")
+                    print("Please grant access in System Settings > Privacy & Security > Accessibility")
+                    throw ExitCode.failure
+                }
+            }
+            injector = TextInjector()
+            print("\u{001B}[32m✓\u{001B}[0m Accessibility permission granted")
+        }
+
         // Initialize transcription engine (downloads model if needed)
         print("Loading model '\(model)'...")
         transcriptionEngine.onDownloadProgress = { progress in
@@ -77,7 +98,7 @@ struct RTWhisperCLI: AsyncParsableCommand {
         let sessionStart = Date()
 
         // Setup audio chunk processing
-        audioCapture.onAudioChunkReady = { [transcriptionEngine, cleanupPipeline, raw, clipboard, sessionStart] samples in
+        audioCapture.onAudioChunkReady = { [transcriptionEngine, cleanupPipeline, raw, clipboard, injector, sessionStart] samples in
             Task {
                 do {
                     let result = try await transcriptionEngine.transcribe(samples: samples)
@@ -107,6 +128,15 @@ struct RTWhisperCLI: AsyncParsableCommand {
                     if clipboard {
                         copyToClipboard(outputText)
                     }
+
+                    // Type into active app if requested
+                    if let injector = injector {
+                        do {
+                            try injector.inject(outputText)
+                        } catch {
+                            print("\u{001B}[31mType injection error: \(error.localizedDescription)\u{001B}[0m")
+                        }
+                    }
                 } catch {
                     print("\u{001B}[31mTranscription error: \(error.localizedDescription)\u{001B}[0m")
                 }
@@ -124,6 +154,9 @@ struct RTWhisperCLI: AsyncParsableCommand {
         print("\u{001B}[32m🎤 Listening...\u{001B}[0m (Ctrl+C to stop)")
         if !raw {
             print("\u{001B}[90m   Filler words and repetitions will be removed\u{001B}[0m")
+        }
+        if type {
+            print("\u{001B}[90m   Text will be typed into the active app\u{001B}[0m")
         }
         print()
 
