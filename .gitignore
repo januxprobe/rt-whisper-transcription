@@ -1,0 +1,29 @@
+# Xcode
+*.xcodeproj
+*.xcworkspace
+xcuserdata/
+*.xccheckout
+*.xcscmblueprint
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+# macOS
+.DS_Store
+*.dSYM.zip
+*.dSYM
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+
+# Build artifacts
+DerivedData/
+build/
+
+# WhisperKit models (downloaded on first run)
+Models/
