@@ -54,7 +54,7 @@ rt-whisper
 | `--model <name>` | `large-v3` | WhisperKit model variant |
 | `--language <code>` | `en` | Language code for transcription |
 | `--clipboard` | `false` | Copy each transcription to clipboard |
-| `--type` | `false` | Type transcription into the currently active app |
+| `--type` | `false` | Type transcription into the currently active app (uses silence detection) |
 | `--chunk-duration <secs>` | `2.0` | Audio chunk duration in seconds |
 
 ### Available Models
@@ -84,6 +84,7 @@ rt-whisper --raw
 rt-whisper --clipboard
 
 # Type directly into the focused application (Cursor, TextEdit, VS Code, etc.)
+# Waits for pauses in speech to form complete sentences before typing
 rt-whisper --type
 
 # Combine type with other options

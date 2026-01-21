@@ -44,6 +44,12 @@ struct RTWhisperCLI: AsyncParsableCommand {
         let audioCapture = AudioCaptureManager()
         audioCapture.chunkDuration = chunkDuration
 
+        // Enable voice activity detection when typing to active app
+        // This waits for pauses in speech before transcribing for better sentence formation
+        if type {
+            audioCapture.useVoiceActivityDetection = true
+        }
+
         let transcriptionEngine = TranscriptionEngine(modelVariant: model, language: language)
         let cleanupPipeline = TextCleanupPipeline.defaultPipeline()
 
@@ -156,7 +162,7 @@ struct RTWhisperCLI: AsyncParsableCommand {
             print("\u{001B}[90m   Filler words and repetitions will be removed\u{001B}[0m")
         }
         if type {
-            print("\u{001B}[90m   Text will be typed into the active app\u{001B}[0m")
+            print("\u{001B}[90m   Text will be typed into the active app (waits for pauses)\u{001B}[0m")
         }
         print()
 

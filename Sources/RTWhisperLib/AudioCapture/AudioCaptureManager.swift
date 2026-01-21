@@ -8,14 +8,34 @@ public final class AudioCaptureManager {
     private var audioBuffer: [Float] = []
     private let bufferLock = NSLock()
 
+    // Voice activity detection state
+    private var isSpeaking = false
+    private var silenceStartTime: Date?
+    private var speechStartTime: Date?
+
     /// Target sample rate for Whisper models
     public static let targetSampleRate: Double = 16000
 
     /// Callback invoked when audio chunk is ready for processing
     public var onAudioChunkReady: (([Float]) -> Void)?
 
-    /// Duration of audio chunks in seconds
+    /// Duration of audio chunks in seconds (used when VAD is disabled)
     public var chunkDuration: Double = 2.0
+
+    /// Enable voice activity detection (silence-based chunking)
+    public var useVoiceActivityDetection: Bool = false
+
+    /// RMS threshold below which audio is considered silence (0.0 to 1.0)
+    public var silenceThreshold: Float = 0.015
+
+    /// Duration of silence required to trigger transcription (seconds)
+    public var silenceDurationThreshold: Double = 0.8
+
+    /// Maximum buffer duration before forcing transcription (seconds)
+    public var maxBufferDuration: Double = 30.0
+
+    /// Minimum speech duration required before transcription (seconds)
+    public var minSpeechDuration: Double = 0.3
 
     /// Whether the audio engine is currently running
     public var isRecording: Bool {
@@ -120,6 +140,14 @@ public final class AudioCaptureManager {
         bufferLock.lock()
         audioBuffer.append(contentsOf: samples)
 
+        if useVoiceActivityDetection {
+            processWithVAD(samples: samples)
+        } else {
+            processWithFixedChunks()
+        }
+    }
+
+    private func processWithFixedChunks() {
         // Check if we have enough samples for a chunk
         let samplesPerChunk = Int(Self.targetSampleRate * chunkDuration)
         if audioBuffer.count >= samplesPerChunk {
@@ -131,6 +159,75 @@ public final class AudioCaptureManager {
         } else {
             bufferLock.unlock()
         }
+    }
+
+    private func processWithVAD(samples: [Float]) {
+        let rms = calculateRMS(samples)
+        let now = Date()
+        let isCurrentlySpeaking = rms > silenceThreshold
+
+        if isCurrentlySpeaking {
+            // Speech detected
+            if !isSpeaking {
+                // Speech just started
+                isSpeaking = true
+                speechStartTime = now
+            }
+            silenceStartTime = nil
+        } else {
+            // Silence detected
+            if isSpeaking {
+                if silenceStartTime == nil {
+                    // Silence just started
+                    silenceStartTime = now
+                } else if let silenceStart = silenceStartTime {
+                    // Check if silence has persisted long enough
+                    let silenceDuration = now.timeIntervalSince(silenceStart)
+                    if silenceDuration >= silenceDurationThreshold {
+                        // Check minimum speech duration
+                        let speechDuration = speechStartTime.map { now.timeIntervalSince($0) } ?? 0
+                        if speechDuration >= minSpeechDuration && !audioBuffer.isEmpty {
+                            let chunk = audioBuffer
+                            audioBuffer.removeAll()
+                            bufferLock.unlock()
+
+                            onAudioChunkReady?(chunk)
+
+                            bufferLock.lock()
+                        }
+
+                        // Reset state
+                        isSpeaking = false
+                        silenceStartTime = nil
+                        speechStartTime = nil
+                    }
+                }
+            }
+        }
+
+        // Force transcription if buffer exceeds max duration
+        let maxSamples = Int(Self.targetSampleRate * maxBufferDuration)
+        if audioBuffer.count >= maxSamples {
+            let chunk = audioBuffer
+            audioBuffer.removeAll()
+            bufferLock.unlock()
+
+            onAudioChunkReady?(chunk)
+
+            // Reset state
+            bufferLock.lock()
+            isSpeaking = false
+            silenceStartTime = nil
+            speechStartTime = nil
+        }
+
+        bufferLock.unlock()
+    }
+
+    private func calculateRMS(_ samples: [Float]) -> Float {
+        guard !samples.isEmpty else { return 0 }
+        let sumOfSquares = samples.reduce(0) { $0 + $1 * $1 }
+        return sqrt(sumOfSquares / Float(samples.count))
     }
 }
 
