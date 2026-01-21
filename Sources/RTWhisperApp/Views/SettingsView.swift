@@ -34,6 +34,12 @@ struct SettingsView: View {
 
 struct GeneralSettingsView: View {
     @Bindable var appState: AppState
+    @State private var selectedLanguage: String
+
+    init(appState: AppState) {
+        self.appState = appState
+        self._selectedLanguage = State(initialValue: appState.selectedLanguage)
+    }
 
     var body: some View {
         Form {
@@ -59,13 +65,15 @@ struct GeneralSettingsView: View {
             }
 
             Section {
-                Picker("Language", selection: Binding(
-                    get: { appState.selectedLanguage },
-                    set: { appState.selectedLanguage = $0 }
-                )) {
+                Picker("Language", selection: $selectedLanguage) {
                     ForEach(AppState.availableLanguages, id: \.0) { code, name in
                         Text(name).tag(code)
                     }
+                }
+                .pickerStyle(.menu)
+                .onChange(of: selectedLanguage) { oldValue, newValue in
+                    guard oldValue != newValue else { return }
+                    appState.selectedLanguage = newValue
                 }
             } header: {
                 Text("Transcription")

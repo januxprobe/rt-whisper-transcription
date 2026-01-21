@@ -37,7 +37,11 @@ final class AppState {
 
     var selectedLanguage: String {
         get { UserDefaults.standard.string(forKey: "selectedLanguage") ?? "en" }
-        set { UserDefaults.standard.set(newValue, forKey: "selectedLanguage") }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "selectedLanguage")
+            // Update language on existing engine (no reload needed)
+            transcriptionEngine?.language = newValue
+        }
     }
 
     var useRawMode: Bool {

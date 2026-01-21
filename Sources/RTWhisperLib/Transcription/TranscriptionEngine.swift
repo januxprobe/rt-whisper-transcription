@@ -5,7 +5,9 @@ import WhisperKit
 public final class TranscriptionEngine {
     private var whisperKit: WhisperKit?
     private let modelVariant: String
-    private let language: String
+
+    /// Language code for transcription (can be changed without reloading model)
+    public var language: String
 
     /// Available model variants in order of size/accuracy
     public static let availableModels = [
