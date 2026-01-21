@@ -138,7 +138,8 @@ struct RTWhisperCLI: AsyncParsableCommand {
                     // Type into active app if requested
                     if let injector = injector {
                         do {
-                            try injector.inject(outputText)
+                            // Prepend space to separate from previous text
+                            try injector.inject(" " + outputText)
                         } catch {
                             print("\u{001B}[31mType injection error: \(error.localizedDescription)\u{001B}[0m")
                         }
