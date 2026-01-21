@@ -24,6 +24,13 @@ let package = Package(
                 .product(name: "ArgumentParser", package: "swift-argument-parser")
             ]
         ),
+        .executableTarget(
+            name: "RTWhisperApp",
+            dependencies: [
+                "RTWhisperLib"
+            ],
+            path: "Sources/RTWhisperApp"
+        ),
         .testTarget(
             name: "RTWhisperTests",
             dependencies: ["RTWhisperLib"]
